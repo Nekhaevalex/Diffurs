@@ -7,13 +7,15 @@
 //
 
 #include <stdio.h>
+#include <sys/ipc.h>
 #include <sys/sem.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
-#define STEP 0.01
+#define STEP 1
 
 void reset() {
 	remove("sem");
@@ -38,7 +40,7 @@ int main(int argc, const char * argv[]) {
 		nread = getline(&string, &length, scenary);
 		calcProcessAmount++;
 	}
-	printf("%d strings in file\n", calcProcessAmount);
+	//printf("%d strings in file\n", calcProcessAmount);
 	int createResult = creat("sem", O_CREAT|0777);
 	if (createResult<0) {
 		printf("Error creating semaphore file\n");
@@ -61,31 +63,34 @@ int main(int argc, const char * argv[]) {
 			sem[0].sem_num = 0;
 			sem[0].sem_op = 1;
 			sem[0].sem_flg = 0;
-			int semIdC = semget(semKey, 1, IPC_CREAT|0777);
 			double a = 0.0, b = 0.0, c = 0.0, d = 0.0;
 			FILE* scenFile = fopen(filename, "rt");
 			for (int i = 0; i<globalCounter; i++) {
 				fscanf(scenFile, "%lf %lf %lf %lf", &a, &b, &c, &d);
 			}
-			printf("My params: %lf, %lf, %lf, %lf\n", a, b, c, d);
+			//printf("My params: %lf, %lf, %lf, %lf\n", a, b, c, d);
 			fclose(scenFile);
-			int result = semop(semIdC, sem, 1);
+			int semIdC = semget(semKey, 1, IPC_R|0777);
+			int result = semop(semIdC, sem, 0);
 			if (result<0) {
-				printf("Error on semaphore");
+				printf("Error on semaphor\n");
 				reset();
 				exit(-5);
 			}
 			char calcFileName[256];
 			sprintf(calcFileName, "Calculation report %d (%d).txt", globalCounter, cpid);
-			printf("Will be saved in %s\n", calcFileName);
+			//printf("Will be saved in %s\n", calcFileName);
 			FILE* calculationReport = fopen(calcFileName, "wt");
 			fprintf(calculationReport, "Calculation report on process %d\nTaks: dy/dt=A*t+B\nThread info: A: %f\tB: %f\tC: %f\tD: %f\n\nResults:\n", cpid,a, b, c, d );
 			double y = c;
-			for (double t = 0; t< (float)d; t+= STEP) {
+			for (double t = 0; t<=(float)d; t+= STEP) {
 				y = y+(a*t+b)*t;
 				fprintf(calculationReport, "%lf\t%lf\n", t, y);
 			}
+			close(semIdC);
 			fclose(calculationReport);
+			if (globalCounter == calcProcessAmount)
+				reset();
 			exit(0);
 		} else if (pid>0) {
 			//parent
@@ -101,9 +106,9 @@ int main(int argc, const char * argv[]) {
 			sem[0].sem_num = 0;
 			sem[0].sem_op = -1;
 			sem[0].sem_flg = 0;
-			int result = semop(semIdP, sem, 1);
+			int result = semop(semIdP, sem, 0);
 			if (result<0) {
-				printf("Error on semaphore");
+				printf("Error on posting semaphore\n");
 				reset();
 				exit(-5);
 			}
@@ -113,6 +118,7 @@ int main(int argc, const char * argv[]) {
 			exit(-2);
 		}
 	}
+	sleep(1);
 	reset();
 	return 0;
 }
