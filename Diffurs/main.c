@@ -9,7 +9,10 @@
 #include <stdio.h>
 
 int main(int argc, const char * argv[]) {
-	// insert code here...
-	printf("Hello, World!\n");
+	if (argc < 2) {
+		printf("Usage: programname <filename>\n");
+		return -1;
+	}
+	
 	return 0;
 }
