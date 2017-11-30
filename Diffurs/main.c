@@ -15,7 +15,7 @@
 #include <string.h>
 #include <errno.h>
 
-#define STEP 1
+#define STEP 0.01
 
 void reset() {
 	remove("sem");
@@ -48,12 +48,12 @@ int main(int argc, const char * argv[]) {
 	}
 	fclose(scenary);
 	unsigned int globalCounter = 1;
+	key_t semKey = ftok("sem", 1);
 	for (int i = 0; i<calcProcessAmount; i++) {
 		pid_t pid = fork();
 		if (pid == 0) {
 			//child
 			int cpid = getpid();
-			key_t semKey = ftok("sem", 1);
 			if (semKey < 0) {
 				printf("Error creating semaphores\n");
 				reset();
@@ -94,7 +94,6 @@ int main(int argc, const char * argv[]) {
 			exit(0);
 		} else if (pid>0) {
 			//parent
-			key_t semKey = ftok("sem", 1);
 			if (semKey < 0) {
 				printf("Error creating semaphores\n");
 				reset();
